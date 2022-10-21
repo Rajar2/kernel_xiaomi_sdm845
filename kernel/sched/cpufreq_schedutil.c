@@ -567,6 +567,13 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		sugov_walt_adjust(j_sg_cpu, &util, &max);
 	}
 
+#ifdef CONFIG_CONTROL_CENTER
+	if (ccdm_enabled()) {
+		util = sugov_ccdm_decision(
+				sg_cpu->cpu, util,
+				policy->min, policy->max, max);
+	}
+#endif
 	return get_next_freq(sg_policy, util, max);
 }
 
@@ -614,7 +621,11 @@ static void sugov_update_shared(struct update_util_data *hook, u64 time,
 			next_f = sg_policy->policy->cpuinfo.max_freq;
 		else
 			next_f = sugov_next_freq_shared(sg_cpu, time);
-
+#ifdef CONFIG_CONTROL_CENTER
+			/* keep requested freq */
+			sg_policy->policy->req_freq = next_f;
+			next_f = cc_cal_next_freq_with_extra_util(policy, next_f);
+#endif
 		sugov_update_commit(sg_policy, time, next_f);
 	}
 
